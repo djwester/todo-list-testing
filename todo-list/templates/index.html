@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<form>
+    <textarea id="task-description" name="task" rows="5" placeholder="Enter your task"></textarea>
+    <button id="create-task" type="button">Add</button>
+</form>
+
+<br>
+<div>
+    <h2>Fetch API POST RESULTS</h2>
+
+    <!-- Table to display fetched user data -->
+    <table>
+        <tr>
+            <th>Desciption</th>
+            <th>Status</th>
+        </tr>
+        <tr id="tasks"></tr>
+    </table>
+</div>
+
+<!-- Link JavaScript file -->
+<script src="static/main.js"></script>
+<h2>Tasks</h2>
+
+<div>
+    {% for todo in todos %}
+    <div class="task">
+        {% if todo.completed %}
+        <strike>{{ todo.task }}</strike>
+        {% else %}
+        {{ todo.task }}
+        {% endif %}
+        <small>
+            <a href="edit/{{ todo.id }}">Edit</a>
+            <a href="delete/{{ todo.id }}">Delete</a>
+        </small>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock content %}
+
+<!-- <script type="text/javascript"> -->
+
+// document.addEventListener('DOMContentLoaded', () => {
+// document.querySelectorAll('button').forEach(button => {
+// button.onclick = () => {
+// const request = new XMLHttpRequest();
+// request.open('POST', `/${button.id}`);
+// request.onload = () => {
+// const response = request.responseText;
+// document.getElementById('count').innerHTML = response;
+// };
+// request.send();
+// };
+// });
+// });
+<!-- </script> -->

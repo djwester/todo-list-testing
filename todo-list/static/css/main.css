@@ -1,0 +1,49 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background: #f5f5f5;
+}
+
+main {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+textarea {
+    width: 100%;
+    height: 100px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    resize: none;
+}
+
+button {
+    width: 100%;
+    height: 40px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #eee;
+    color: #333;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #ccc;
+}
+
+.task:first-child {
+    border-top: 1px solid #ccc;
+}
