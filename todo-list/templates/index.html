@@ -25,21 +25,24 @@
 <script src="static/main.js"></script>
 <h2>Tasks</h2>
 
-<div>
+<table>
     {% for todo in todos %}
-    <div class="task">
-        {% if todo.completed %}
-        <strike>{{ todo.task }}</strike>
+    <tr class="task">
+        {% if todo.status == "Complete" %}
+        <strike>{{ todo.description }}</strike>
         {% else %}
-        {{ todo.task }}
+        <td>{{ todo.description }}</td>
+        <td>{{todo.status}}</td>
         {% endif %}
-        <small>
-            <a href="edit/{{ todo.id }}">Edit</a>
-            <a href="delete/{{ todo.id }}">Delete</a>
-        </small>
-    </div>
+        <td>
+            <small>
+                <a href="edit/{{ todo.id }}">Edit</a>
+                <a href="delete/{{ todo.id }}">Delete</a>
+            </small>
+        </td>
+    </tr>
     {% endfor %}
-</div>
+</table>
 
 {% endblock content %}
 

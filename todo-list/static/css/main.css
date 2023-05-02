@@ -47,3 +47,8 @@ button {
 .task:first-child {
     border-top: 1px solid #ccc;
 }
+
+th,
+td {
+    padding: 15px;
+}

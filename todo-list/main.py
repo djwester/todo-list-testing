@@ -1,5 +1,6 @@
 import os
 from dataclasses import asdict, dataclass
+from typing import Optional
 
 import database.database as models
 from fastapi import FastAPI, Form, Request, Response, status
@@ -27,13 +28,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 class Task:
     description: str
     status: models.Status
+    id: Optional[int] = None
 
+
+def get_all_todos():
+    obj = aliased(models.Task, name="obj")
+    stmt = select(obj)
+    todos = [Task(id=i.id, description=i.description, status=i.status.value) for i in session.scalars(stmt)]
+    return todos
 
 @app.get("/")
 def root(request: Request):
-    obj = aliased(models.Task, name="obj")
-    stmt = select(obj)
-    todos = [i.id for i in session.scalars(stmt)]
+    todos = get_all_todos()
     return templates.TemplateResponse("index.html", 
                                       {"request": request, "todos": todos})
 
@@ -50,22 +56,11 @@ def create_task(task: Task):
         "status": db_task.status,
     }
 
+@app.get("/tasks", status_code=200)
+def get_tasks():
+    todos = get_all_todos()
 
-@app.post("/add", status_code=201)
-def add_task(request: Request, task: str = Form(...)):
-
-    internal_task = Task(description=task,
-                status=models.Status.DRAFT)
-
-    created_task = create_task(internal_task)
-    return str(created_task["description"])
-    # return RedirectResponse(url=app.url_path_for("root"), 
-    #                         status_code=status.HTTP_303_SEE_OTHER)
-    return {
-        "id": db_task.id,
-        "description": db_task.description,
-        "status": db_task.status,
-    }
+    return todos
 
 
 @app.put("/tasks/{task_id}")
