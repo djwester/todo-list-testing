@@ -2,7 +2,7 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-import database.database as models
+from database import database as models
 from fastapi import FastAPI, Form, Request, Response, status
 # from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
