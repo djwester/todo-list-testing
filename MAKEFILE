@@ -1,4 +1,7 @@
-.PHONY: install
+.PHONY: install, run-dev
 
 install:
 	poetry install
+
+run-dev:
+	uvicorn main:app --reload

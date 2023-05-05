@@ -12,7 +12,10 @@ from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import aliased, sessionmaker
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
-engine = create_engine(os.environ["DATABASE_URL"])
+uri = os.getenv("DATABASE_URL")  # or other relevant config var
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+engine = create_engine(uri)
 
 Session = sessionmaker(bind=engine)
 session = Session()
