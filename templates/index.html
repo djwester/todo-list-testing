@@ -9,56 +9,19 @@
 
 <br>
 <div>
-    <h2>Fetch API POST RESULTS</h2>
-
-    <!-- Table to display fetched user data -->
-    <table>
-        <tr>
-            <th>Desciption</th>
-            <th>Status</th>
-        </tr>
-        <tr id="tasks"></tr>
-    </table>
+    <h2>Tasks</h2>
 </div>
 
 <!-- Link JavaScript file -->
 <script src="static/main.js"></script>
-<h2>Tasks</h2>
 
-<table>
-    {% for todo in todos %}
-    <tr class="task">
-        {% if todo.status == "Complete" %}
-        <strike>{{ todo.description }}</strike>
-        {% else %}
-        <td>{{ todo.description }}</td>
-        <td>{{todo.status}}</td>
-        {% endif %}
-        <td>
-            <small>
-                <a href="edit/{{ todo.id }}">Edit</a>
-                <a href="delete/{{ todo.id }}">Delete</a>
-            </small>
-        </td>
+<table id="tasks">
+    <tr>
+        <th>Description</th>
+        <th>Status</th>
+        <th></th>
     </tr>
-    {% endfor %}
+   
 </table>
 
 {% endblock content %}
-
-<!-- <script type="text/javascript"> -->
-
-// document.addEventListener('DOMContentLoaded', () => {
-// document.querySelectorAll('button').forEach(button => {
-// button.onclick = () => {
-// const request = new XMLHttpRequest();
-// request.open('POST', `/${button.id}`);
-// request.onload = () => {
-// const response = request.responseText;
-// document.getElementById('count').innerHTML = response;
-// };
-// request.send();
-// };
-// });
-// });
-<!-- </script> -->

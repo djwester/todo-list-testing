@@ -1,0 +1,9 @@
+{
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    },
+    "python.formatting.provider": "black",
+    "python.linting.flake8Enabled": true,
+    "editor.defaultFormatter": "ms-python.python"
+}

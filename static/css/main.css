@@ -11,7 +11,7 @@ body {
 
 main {
     width: 100%;
-    max-width: 520px;
+    max-width: 720px;
     margin: 0 auto;
     padding: 0 20px;
 }
@@ -35,20 +35,28 @@ button {
     font-size: 16px;
     cursor: pointer;
 }
-
-.task {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #ccc;
+.edit-task{
+    width: 50px;
+    height: 40px;
+    margin-right: 10px;
 }
-
-.task:first-child {
-    border-top: 1px solid #ccc;
+.delete-task{
+    width: 60px;
+    height: 40px;
 }
-
+#container{
+    text-align: center;
+}
+table{
+    table-layout: fixed;
+    width: 100%;
+}
 th,
 td {
-    padding: 15px;
+    padding: 10px;
+    text-align: left;
+    width: 33%;
+}
+tr{
+    border-bottom: 1px solid #ccc;
 }

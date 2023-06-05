@@ -1,18 +1,18 @@
 import os
-from dataclasses import asdict, dataclass
 from typing import Optional
 
-from database import database as models
-from fastapi import FastAPI, Form, Request, Response, status
-# from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Request, Response, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import aliased, sessionmaker
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
-uri = os.getenv("DATABASE_URL")  # or other relevant config var
+from database import database as models
+
+uri = os.getenv("DATABASE_URL")
 if uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
 engine = create_engine(uri)
@@ -23,12 +23,12 @@ session = Session()
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 
+
 # TODO: Update to use Routes
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@dataclass
-class Task:
+class Task(BaseModel):
     description: str
     status: models.Status
     id: Optional[int] = None
@@ -37,19 +37,25 @@ class Task:
 def get_all_todos():
     obj = aliased(models.Task, name="obj")
     stmt = select(obj)
-    todos = [Task(id=i.id, description=i.description, status=i.status.value) for i in session.scalars(stmt)]
+    todos = [
+        Task(id=i.id, description=i.description, status=i.status.value)
+        for i in session.scalars(stmt)
+    ]
     return todos
+
 
 @app.get("/")
 def root(request: Request):
     todos = get_all_todos()
-    return templates.TemplateResponse("index.html", 
-                                      {"request": request, "todos": todos})
+    print(todos[0].status)
+    return templates.TemplateResponse(
+        "index.html", {"request": request, "todos": todos}
+    )
 
 
 @app.post("/tasks", status_code=201)
 def create_task(task: Task):
-    db_task = models.Task(**asdict(task))
+    db_task = models.Task(**task.dict())
     session.add(db_task)
     session.commit()
 
@@ -59,11 +65,26 @@ def create_task(task: Task):
         "status": db_task.status,
     }
 
+
 @app.get("/tasks", status_code=200)
 def get_tasks():
     todos = get_all_todos()
 
     return todos
+
+
+@app.put("/tasks/{task_id}/status")
+def update_task_status(task_id: int, status: models.Status):
+    obj = aliased(models.Task, name="obj")
+    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    db_task.status = status
+    session.commit()
+
+    return {
+        "id": db_task.id,
+        "description": db_task.description,
+        "status": db_task.status,
+    }
 
 
 @app.put("/tasks/{task_id}")
