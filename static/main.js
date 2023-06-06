@@ -2,40 +2,7 @@
 const addbutton = document.getElementById("create-task");
 const url = "http://127.0.0.1:8000/tasks";
 
-addbutton.addEventListener("click", () => {
-    const formText = document.getElementById("task-description").value;
-    var data = { "description": formText, "status": "Draft" }
-    fetch(url, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data),
-    })
-    .then(response => response.json())
-    .then(json => {
-
-        // Create a variable to store HTML
-        let li = ``;
-        li +=`<tr>`;
-        li += `<td>${json.description} </td>`;
-        li += `<td>${json.status}</td>`;
-        li +=`<td>
-            <small>
-                <button id="${json.id}" type="button" class=".edit-task">Edit</button>
-                <a href="${url}/tasks/${json.id}">Edit</a>
-                <a href="delete/${json.id}">Delete</a>
-            </small>
-        </td>`;
-        li += `</tr>`;
-
-        // Display result
-        document.getElementById("tasks").innerHTML += li;
-    });
-    
-});
-
-document.addEventListener("DOMContentLoaded", () => {
+function renderPage() {
     fetch(url, {
         method: "GET",
         headers: {
@@ -54,8 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
             li += `<td>${task.status}</td>`;
             li +=`<td>
                 <small>
-                    <button id="${task.id}" type="button" class="edit-task" description="${task.description}">Edit</button>
-                    <button id="${task.id}" type="button" class="delete-task">Delete</button>
+                    <button name="edit_${task.id}" id="${task.id}" type="button" class="edit-task" description="${task.description}">Edit</button>
+                    <button name="delete_${task.id}" id="${task.id}" type="button" class="delete-task">Delete</button>
                 </small>
             </td>`;
             li += `</tr>`;
@@ -73,7 +40,21 @@ document.addEventListener("DOMContentLoaded", () => {
             item.addEventListener("click", deleteTask)
         })
     });
+}
+addbutton.addEventListener("click", () => {
+    const formText = document.getElementById("task-description").value;
+    var data = { "description": formText, "status": "Draft" }
+    fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data),
+    })
+    .then(renderPage());    
 });
+
+document.addEventListener("DOMContentLoaded", renderPage)
 
 function deleteTask(event) {
     const taskId = event.currentTarget.id
@@ -92,7 +73,6 @@ function editTask (event) {
     const taskUrl = `${url}/${taskId}`
     
     let description = window.prompt("Edit the task",taskDescription)
-    console.log(description)
     const data = {"description": description, "status": "Draft" }
     fetch(taskUrl, {
         method: "PUT",
@@ -101,9 +81,15 @@ function editTask (event) {
         },
         body: JSON.stringify(data),
     })
-    .then(description => {
-        taskDescription = description
-        description_element = document.getElementsByName(`description_${taskId}`)
-        description_element.value = description;
-    })
+    .then(response => response.json())
+    .then(json => {
+        element_name = `description_${json.id}`
+        elem = document.getElementsByName(element_name)[0]
+        elem.innerHTML = json.description
+
+        edit_button_name = `edit_${json.id}`
+        edit_elem = document.getElementsByName(edit_button_name)[0]
+        edit_elem.setAttribute("description", json.description)
+       
+    });
 }

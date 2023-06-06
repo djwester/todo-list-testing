@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy import Integer, MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -25,6 +26,19 @@ class Task(Base):
 
     description: Mapped[str]
     status: Mapped[Status]
+
+
+class User(Base):
+    __tablename__ = "profile"
+    metadata = meta
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    username: Mapped[str]
+    md5_password_hash: Mapped[str]
+    email: Mapped[Optional[str]]
+    full_name: Mapped[Optional[str]]
+    disabled: Mapped[Optional[bool]]
 
 
 uri = os.getenv("DATABASE_URL")  # or other relevant config var
