@@ -109,10 +109,9 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     return {"access_token": db_user.md5_password_hash, "token_type": "bearer"}
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root(request: Request):
     todos = get_all_todos()
-    print(todos[0].status)
     return templates.TemplateResponse(
         "index.html", {"request": request, "todos": todos}
     )
@@ -138,7 +137,7 @@ def get_tasks():
     return todos
 
 
-@app.put("/tasks/{task_id}/status")
+@app.put("/tasks/{task_id}/status", include_in_schema=False)
 def update_task_status(task_id: int, status: models.Status):
     obj = aliased(models.Task, name="obj")
     db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
