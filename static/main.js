@@ -2,21 +2,13 @@
 const addbutton = document.getElementById("create-task");
 const url = "http://127.0.0.1:8000/tasks";
 
-function renderPage() {
-    fetch(url, {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json"
-        }
-    })
-    .then(response => response.json())
-    .then(json => {
+function renderPage(json) {
         let table_rows = ``;
         for (var i = 0; i < json.length; i++) {
             // Create a variable to store HTML
-            task = json[i]
+            var task = json[i]
             let li = ``;
-            li +=`<tr>`;
+            li +=`<tr id="${task.id}">`;
             li += `<td name="description_${task.id}">${task.description} </td>`;
             li += `<td>${task.status}</td>`;
             li +=`<td>
@@ -31,16 +23,14 @@ function renderPage() {
 
         // Display result
         document.getElementById("tasks").innerHTML += table_rows;
-    })
-    .then( () => {
         document.querySelectorAll(".edit-task").forEach(item => {
             item.addEventListener("click", editTask)
         })
         document.querySelectorAll(".delete-task").forEach(item => {
             item.addEventListener("click", deleteTask)
         })
-    });
 }
+
 addbutton.addEventListener("click", () => {
     const formText = document.getElementById("task-description").value;
     var data = { "description": formText, "status": "Draft" }
@@ -51,10 +41,21 @@ addbutton.addEventListener("click", () => {
         },
         body: JSON.stringify(data),
     })
-    .then(renderPage());    
+    .then(response => response.json())
+    .then(json => renderPage([json]));    
 });
 
-document.addEventListener("DOMContentLoaded", renderPage)
+document.addEventListener("DOMContentLoaded", () => {
+    fetch(url, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    })
+    .then(response => response.json())
+    .then(json => renderPage(json))
+})
+
 
 function deleteTask(event) {
     const taskId = event.currentTarget.id
@@ -64,6 +65,15 @@ function deleteTask(event) {
         headers: {
             "Content-Type": "application/json"
         },
+    })
+    .then(() => {
+        var rows = document.getElementsByTagName("tr");
+        for (const row in rows){
+            if (rows[row].id == taskId) {
+                document.getElementById("tasks").deleteRow(row)
+            }
+            
+        }
     });
 }
 function editTask (event) {

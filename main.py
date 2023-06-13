@@ -51,8 +51,11 @@ class UserCreate(BaseModel):
     full_name: str | None = None
 
 
-def generate_md5_hash(token):
-    return hashlib.md5(token.encode("utf-8")).hexdigest()
+def generate_md5_hash(token: str, username: str):
+    pwd_hash = hashlib.md5(token.encode("utf-8")).hexdigest()
+    username_hash = hashlib.md5(username.encode("utf-8")).hexdigest()
+
+    return username_hash + pwd_hash
 
 
 def get_user_by_token(token: str):
@@ -88,13 +91,18 @@ def get_all_todos():
 
 @app.post("/token")
 def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    """
+    You can login as user1 with password 12345
+
+    If you want to create your own user, use the /user endpoint
+    """
     try:
         obj = aliased(models.User, name="obj")
         stmt = select(obj).where(obj.username == form_data.username)
         db_user = session.scalars(stmt).one()
     except NoResultFound:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
-    hashed_password = generate_md5_hash(form_data.password)
+    hashed_password = generate_md5_hash(form_data.password, form_data.username)
     if not hashed_password == db_user.md5_password_hash:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
@@ -250,7 +258,7 @@ def create_user(user: UserCreate):
 
     db_user = models.User(
         username=user.username,
-        md5_password_hash=generate_md5_hash(user.password),
+        md5_password_hash=generate_md5_hash(user.password, user.username),
         email=user.email,
         full_name=user.full_name,
         disabled=False,
@@ -265,6 +273,23 @@ def create_user(user: UserCreate):
     }
 
 
-@app.delete("/user/{username}")
-def delete_user(username: str):
-    pass
+@app.put("/user/{username}")
+def update_user(user: UserCreate):
+    obj = aliased(models.User, name="obj")
+    stmt = select(obj).where(obj.username == user.username)
+    try:
+        db_user = session.scalars(stmt).one()
+    except NoResultFound:
+        raise HTTPException(
+            status_code=404, detail=f"The user {user.username} does not exist"
+        )
+    db_user.md5_password_hash = generate_md5_hash(user.password, user.username)
+    db_user.email = user.email
+    db_user.full_name = user.full_name
+    session.commit()
+
+    return {
+        "username": db_user.username,
+        "pwd": db_user.md5_password_hash,
+        "email": db_user.email,
+    }
