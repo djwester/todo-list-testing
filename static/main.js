@@ -10,7 +10,16 @@ function renderPage(json) {
             let li = ``;
             li +=`<tr id="${task.id}">`;
             li += `<td name="description_${task.id}">${task.description} </td>`;
-            li += `<td>${task.status}</td>`;
+            li += `<td>
+                <div class="dropdown">
+                    <button id="statusButton_${task.id}" onclick="getDropdown(${task.id})" class="dropbtn">${task.status}</button>
+                    <div id="statusDropdown_${task.id}" class="dropdown-content">
+                    <a onclick="setDraft(${task.id})" href="#">Draft</a>
+                    <a onclick="setInProgress(${task.id})" href="#">In Progress</a>
+                    <a onclick="setComplete(${task.id})" href="#">Complete</a>
+                    </div>
+                </div>
+            </td>`;
             li +=`<td>
                 <small>
                     <button name="edit_${task.id}" id="${task.id}" type="button" class="edit-task" description="${task.description}">Edit</button>
@@ -56,7 +65,6 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(json => renderPage(json))
 })
 
-
 function deleteTask(event) {
     const taskId = event.currentTarget.id
     const taskUrl = `${url}/${taskId}`
@@ -76,6 +84,7 @@ function deleteTask(event) {
         }
     });
 }
+
 function editTask (event) {
 
     const taskId = event.currentTarget.id
@@ -103,3 +112,69 @@ function editTask (event) {
        
     });
 }
+
+function setInProgress (task_id) {
+    taskUrl = `${url}/${task_id}/in-progress`
+    data = {}
+    fetch(taskUrl, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(json => {
+        document.getElementById(`statusButton_${json.id}`).innerHTML="In Progress"
+    })
+}
+
+function setDraft (task_id) {
+    taskUrl = `${url}/${task_id}/draft`
+    data = {}
+    fetch(taskUrl, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(json => {
+        document.getElementById(`statusButton_${json.id}`).innerHTML="Draft"
+    })
+}
+
+function setComplete (task_id) {
+    taskUrl = `${url}/${task_id}/complete`
+    data = {}
+    fetch(taskUrl, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data),
+    })
+    .then(response => response.json())
+    .then(json => {
+        document.getElementById(`statusButton_${json.id}`).innerHTML="Complete"
+    })
+}
+
+function getDropdown(task_id) {
+    document.getElementById(`statusDropdown_${task_id}`).classList.toggle("show");
+  }
+  
+  // Close the dropdown menu if the user clicks outside of it
+  window.onclick = function(event) {
+    if (!event.target.matches('.dropbtn')) {
+      var dropdowns = document.getElementsByClassName("dropdown-content");
+      var i;
+      for (i = 0; i < dropdowns.length; i++) {
+        var openDropdown = dropdowns[i];
+        if (openDropdown.classList.contains('show')) {
+          openDropdown.classList.remove('show');
+        }
+      }
+    }
+  }

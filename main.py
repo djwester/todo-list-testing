@@ -137,11 +137,39 @@ def get_tasks():
     return todos
 
 
-@app.put("/tasks/{task_id}/status", include_in_schema=False)
-def update_task_status(task_id: int, status: models.Status):
+@app.put("/tasks/{task_id}/in-progress", include_in_schema=False)
+def set_in_progress(task_id: int):
     obj = aliased(models.Task, name="obj")
     db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
-    db_task.status = status
+    db_task.status = models.Status.IN_PROGRESS
+    session.commit()
+
+    return {
+        "id": db_task.id,
+        "description": db_task.description,
+        "status": db_task.status,
+    }
+
+
+@app.put("/tasks/{task_id}/draft", include_in_schema=False)
+def set_draft(task_id: int):
+    obj = aliased(models.Task, name="obj")
+    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    db_task.status = models.Status.DRAFT
+    session.commit()
+
+    return {
+        "id": db_task.id,
+        "description": db_task.description,
+        "status": db_task.status,
+    }
+
+
+@app.put("/tasks/{task_id}/complete", include_in_schema=False)
+def set_Complete(task_id: int):
+    obj = aliased(models.Task, name="obj")
+    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    db_task.status = models.Status.COMPLETE
     session.commit()
 
     return {
