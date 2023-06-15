@@ -140,7 +140,10 @@ def get_tasks():
 @app.put("/tasks/{task_id}/in-progress", include_in_schema=False)
 def set_in_progress(task_id: int):
     obj = aliased(models.Task, name="obj")
-    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    try:
+        db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    except NoResultFound:
+        raise HTTPException(status_code=404, detail=f"task {task_id} not found")
     db_task.status = models.Status.IN_PROGRESS
     session.commit()
 
@@ -154,7 +157,10 @@ def set_in_progress(task_id: int):
 @app.put("/tasks/{task_id}/draft", include_in_schema=False)
 def set_draft(task_id: int):
     obj = aliased(models.Task, name="obj")
-    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    try:
+        db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    except NoResultFound:
+        raise HTTPException(status_code=404, detail=f"task {task_id} not found")
     db_task.status = models.Status.DRAFT
     session.commit()
 
@@ -168,7 +174,10 @@ def set_draft(task_id: int):
 @app.put("/tasks/{task_id}/complete", include_in_schema=False)
 def set_Complete(task_id: int):
     obj = aliased(models.Task, name="obj")
-    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    try:
+        db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    except NoResultFound:
+        raise HTTPException(status_code=404, detail=f"task {task_id} not found")
     db_task.status = models.Status.COMPLETE
     session.commit()
 
@@ -195,7 +204,7 @@ def update_task(task_id: int, task: Task):
 
 
 @app.get("/tasks/{task_id}")
-def get_task(task_id, response: Response):
+def get_task(task_id: int, response: Response):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).where(obj.id == task_id)
     try:
