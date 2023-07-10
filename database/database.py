@@ -35,7 +35,7 @@ class User(Base):
     id = mapped_column(Integer, primary_key=True)
 
     username: Mapped[str]
-    md5_password_hash: Mapped[str]
+    hashed_password: Mapped[str]
     email: Mapped[Optional[str]]
     full_name: Mapped[Optional[str]]
     disabled: Mapped[Optional[bool]]
