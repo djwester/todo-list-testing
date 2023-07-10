@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy import create_engine, select
-from sqlalchemy.exc import NoResultFound
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import aliased, sessionmaker
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
@@ -59,8 +59,9 @@ def generate_md5_hash(token: str, username: str):
 
 
 def get_user_by_token(token: str):
+    pwd_hash = hashlib.md5(token.encode("utf-8")).hexdigest()
     obj = aliased(models.User, name="obj")
-    stmt = select(obj).where(obj.md5_password_hash == token)
+    stmt = select(obj).where(obj.md5_password_hash == pwd_hash)
     try:
         db_user = session.scalars(stmt).one()
     except NoResultFound:
@@ -82,6 +83,26 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 def get_all_todos():
     obj = aliased(models.Task, name="obj")
     stmt = select(obj)
+    todos = [
+        Task(id=i.id, description=i.description, status=i.status.value)
+        for i in session.scalars(stmt)
+    ]
+    return todos
+
+
+def get_todo_by_status(status: models.Status) -> list[models.Task]:
+    obj = aliased(models.Task, name="obj")
+    stmt = select(obj).where(obj.status == status)
+    todos = [
+        Task(id=i.id, description=i.description, status=i.status.value)
+        for i in session.scalars(stmt)
+    ]
+    return todos
+
+
+def get_todos_by_description(search: str) -> list[models.Task]:
+    obj = aliased(models.Task, name="obj")
+    stmt = select(obj).where(obj.description == search)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
         for i in session.scalars(stmt)
@@ -120,8 +141,12 @@ def root(request: Request):
 @app.post("/tasks", status_code=201)
 def create_task(task: Task):
     db_task = models.Task(**task.dict())
-    session.add(db_task)
-    session.commit()
+    try:
+        session.add(db_task)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Task already exists")
 
     return {
         "id": db_task.id,
@@ -131,9 +156,13 @@ def create_task(task: Task):
 
 
 @app.get("/tasks", status_code=200)
-def get_tasks():
-    todos = get_all_todos()
-
+def get_tasks(status: models.Status | None = None, search: str | None = None):
+    if status:
+        todos = get_todo_by_status(status)
+    elif search:
+        todos = get_todos_by_description(search)
+    else:
+        todos = get_all_todos()
     return todos
 
 
@@ -229,9 +258,9 @@ def delete_task(task_id: int, response: Response):
     return {"deleted": True}
 
 
-@app.get("/user/me")
-def get_user_me(current_user: Annotated[User, Depends(get_current_user)]):
-    return current_user
+# @app.get("/user/me")
+# def get_user_me(current_user: Annotated[User, Depends(get_current_user)]):
+#     return current_user
 
 
 @app.get("/user/admin")
@@ -310,16 +339,20 @@ def create_user(user: UserCreate):
 
 
 @app.put("/user/{username}")
-def update_user(user: UserCreate):
+def update_user(
+    username: str,
+    user: UserCreate,
+    token: Annotated[str, Depends(oauth2_scheme)],
+):
     obj = aliased(models.User, name="obj")
-    stmt = select(obj).where(obj.username == user.username)
+    stmt = select(obj).where(obj.username == username)
     try:
         db_user = session.scalars(stmt).one()
     except NoResultFound:
         raise HTTPException(
-            status_code=404, detail=f"The user {user.username} does not exist"
+            status_code=404, detail=f"The user {username} does not exist"
         )
-    db_user.md5_password_hash = generate_md5_hash(user.password, user.username)
+    db_user.md5_password_hash = generate_md5_hash(user.password, username)
     db_user.email = user.email
     db_user.full_name = user.full_name
     session.commit()
