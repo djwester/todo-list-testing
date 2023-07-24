@@ -1,7 +1,6 @@
 import hashlib
-import os
 from datetime import datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -10,20 +9,12 @@ from fastapi.templating import Jinja2Templates
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import create_engine, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
-from sqlalchemy.orm import aliased, sessionmaker
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from database import database as models
-
-uri = os.getenv("DATABASE_URL")
-if uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
-engine = create_engine(uri)
-
-Session = sessionmaker(bind=engine)
-session = Session()
 
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
@@ -78,11 +69,11 @@ def create_password_hash(password: str):
     return password_context.hash(password)
 
 
-def authenticate_user(username: str, password: str):
+def authenticate_user(username: str, password: str, db: Session):
     try:
         obj = aliased(models.User, name="obj")
         stmt = select(obj).where(obj.username == username)
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
     except NoResultFound:
         return False
     if not verify_password(password, db_user.hashed_password):
@@ -90,67 +81,73 @@ def authenticate_user(username: str, password: str):
     return db_user
 
 
-def get_user_by_token(token: str):
+def get_user_by_token(token: str, db: Session):
     pwd_hash = hashlib.md5(token.encode("utf-8")).hexdigest()
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.md5_password_hash == pwd_hash)
     try:
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
     except NoResultFound:
         return
     return db_user
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    user = get_user_by_token(token)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+# def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+#     user = get_user_by_token(token)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid authentication credentials",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     return user
 
 
-def get_all_todos():
+def get_all_todos(db: Session):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
-        for i in session.scalars(stmt)
+        for i in db.scalars(stmt)
     ]
     return todos
 
 
-def get_todo_by_status(status: models.Status) -> list[models.Task]:
+def get_todo_by_status(
+    status: models.Status,
+    db: Session,
+) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).where(obj.status == status)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
-        for i in session.scalars(stmt)
+        for i in db.scalars(stmt)
     ]
     return todos
 
 
-def get_todos_by_description(search: str) -> list[models.Task]:
+def get_todos_by_description(search: str, db: Session) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).where(obj.description == search)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
-        for i in session.scalars(stmt)
+        for i in db.scalars(stmt)
     ]
     return todos
 
 
 @app.post("/token")
-def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+def login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Session = Depends(models.db_session),
+):
     """
     You can login as user1 with password 12345
 
     If you want to create your own user, use the /user endpoint
     """
 
-    user = authenticate_user(form_data.username, form_data.password)
+    user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -164,21 +161,21 @@ def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 
 @app.get("/", include_in_schema=False)
-def root(request: Request):
-    todos = get_all_todos()
+def root(request: Request, db: Session = Depends(models.db_session)):
+    todos = get_all_todos(db)
     return templates.TemplateResponse(
         "index.html", {"request": request, "todos": todos}
     )
 
 
 @app.post("/tasks", status_code=201)
-def create_task(task: Task):
+def create_task(task: Task, db: Session = Depends(models.db_session)):
     db_task = models.Task(**task.dict())
     try:
-        session.add(db_task)
-        session.commit()
+        db.add(db_task)
+        db.commit()
     except IntegrityError:
-        session.rollback()
+        db.rollback()
         raise HTTPException(status_code=400, detail="Task already exists")
 
     return {
@@ -189,29 +186,33 @@ def create_task(task: Task):
 
 
 @app.get("/tasks", status_code=200)
-def get_tasks(status: models.Status | None = None, search: str | None = None):
+def get_tasks(
+    status: models.Status | None = None,
+    search: str | None = None,
+    db: Session = Depends(models.db_session),
+):
     if status:
-        todos = get_todo_by_status(status)
+        todos = get_todo_by_status(status, db)
     elif search:
-        todos = get_todos_by_description(search)
+        todos = get_todos_by_description(search, db)
     else:
-        todos = get_all_todos()
+        todos = get_all_todos(db)
     return todos
 
 
 @app.put("/tasks/{task_id}/in-progress", include_in_schema=False)
-def set_in_progress(task_id: int):
+def set_in_progress(task_id: int, db: Session = Depends(models.db_session)):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).filter_by(id=task_id)
     try:
-        db_task = session.execute(stmt).scalar_one()
+        db_task = db.execute(stmt).scalar_one()
     except NoResultFound:
         raise HTTPException(
             status_code=404,
             detail=f"task {task_id} not found",
         )
     db_task.status = models.Status.IN_PROGRESS
-    session.commit()
+    db.commit()
 
     return {
         "id": db_task.id,
@@ -221,18 +222,18 @@ def set_in_progress(task_id: int):
 
 
 @app.put("/tasks/{task_id}/draft", include_in_schema=False)
-def set_draft(task_id: int):
+def set_draft(task_id: int, db: Session = Depends(models.db_session)):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).filter_by(id=task_id)
     try:
-        db_task = session.execute(stmt).scalar_one()
+        db_task = db.execute(stmt).scalar_one()
     except NoResultFound:
         raise HTTPException(
             status_code=404,
             detail=f"task {task_id} not found",
         )
     db_task.status = models.Status.DRAFT
-    session.commit()
+    db.commit()
 
     return {
         "id": db_task.id,
@@ -242,18 +243,18 @@ def set_draft(task_id: int):
 
 
 @app.put("/tasks/{task_id}/complete", include_in_schema=False)
-def set_Complete(task_id: int):
+def set_Complete(task_id: int, db: Session = Depends(models.db_session)):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).filter_by(id=task_id)
     try:
-        db_task = session.execute(stmt).scalar_one()
+        db_task = db.execute(stmt).scalar_one()
     except NoResultFound:
         raise HTTPException(
             status_code=404,
             detail=f"task {task_id} not found",
         )
     db_task.status = models.Status.COMPLETE
-    session.commit()
+    db.commit()
 
     return {
         "id": db_task.id,
@@ -263,12 +264,16 @@ def set_Complete(task_id: int):
 
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, task: Task):
+def update_task(
+    task_id: int,
+    task: Task,
+    db: Session = Depends(models.db_session),
+):
     obj = aliased(models.Task, name="obj")
-    db_task = session.execute(select(obj).filter_by(id=task_id)).scalar_one()
+    db_task = db.execute(select(obj).filter_by(id=task_id)).scalar_one()
     db_task.description = task.description
     db_task.status = task.status
-    session.commit()
+    db.commit()
 
     return {
         "id": db_task.id,
@@ -278,11 +283,13 @@ def update_task(task_id: int, task: Task):
 
 
 @app.get("/tasks/{task_id}")
-def get_task(task_id: int, response: Response):
+def get_task(
+    task_id: int, response: Response, db: Session = Depends(models.db_session)
+):
     obj = aliased(models.Task, name="obj")
     stmt = select(obj).where(obj.id == task_id)
     try:
-        db_task = session.scalars(stmt).one()
+        db_task = db.scalars(stmt).one()
     except NoResultFound:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {}
@@ -291,11 +298,13 @@ def get_task(task_id: int, response: Response):
 
 
 @app.delete("/tasks/{task_id}")
-def delete_task(task_id: int, response: Response):
+def delete_task(
+    task_id: int, response: Response, db: Session = Depends(models.db_session)
+):
     try:
-        db_task = session.get(models.Task, task_id)
-        session.delete(db_task)
-        session.commit()
+        db_task = db.get(models.Task, task_id)
+        db.delete(db_task)
+        db.commit()
     except UnmappedInstanceError:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"error": f"could not delete task {task_id}"}
@@ -303,8 +312,10 @@ def delete_task(task_id: int, response: Response):
     return {"deleted": True}
 
 
-@app.get("/user/me")
-def get_user_me(token: Annotated[User, Depends(oauth2_scheme)]):
+def get_current_user(
+    token: Annotated[User, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(models.db_session)],
+):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -321,19 +332,33 @@ def get_user_me(token: Annotated[User, Depends(oauth2_scheme)]):
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == username)
     try:
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
     except NoResultFound:
         raise credentials_exception
-    return {"username": db_user.username}
+    return db_user
 
 
-@app.get("/user/admin")
-def get_admin_user(current_user: Annotated[User, Depends(get_current_user)]):
+@app.get("/user/me")
+def get_user_me(
+    token: Annotated[User, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(models.db_session)],
+):
+    current_user = get_current_user(token, db)
+
+    return {"username": current_user.username}
+
+
+@app.get("/user/admin", response_model=None)
+def get_admin_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(models.db_session)],
+) -> Any:
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == "admin")
-    admin_user = session.scalars(stmt).one()
+    admin_user = db.scalars(stmt).one()
     if current_user.md5_password_hash == admin_user.md5_password_hash:
-        return {"Success": "You accessed this endpoint!"}
+        # return {"Success": "You accessed this endpoint!"}
+        return admin_user
     else:
         raise HTTPException(
             status_code=403, detail="This user cannot access this endpoint"
@@ -341,7 +366,7 @@ def get_admin_user(current_user: Annotated[User, Depends(get_current_user)]):
 
 
 @app.get("/user")
-def get_users():
+def get_users(db: Session = Depends(models.db_session)):
     obj = aliased(models.User, name="obj")
     stmt = select(obj)
     users = [
@@ -350,7 +375,7 @@ def get_users():
             username=i.username,
             md5_password_hash=i.md5_password_hash,
         )
-        for i in session.scalars(stmt)
+        for i in db.scalars(stmt)
     ]
 
     return users
@@ -361,11 +386,12 @@ def get_user(
     username: str,
     response: Response,
     token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(models.db_session)],
 ):
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == username)
     try:
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
     except NoResultFound:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {}
@@ -374,11 +400,11 @@ def get_user(
 
 
 @app.post("/user")
-def create_user(user: UserCreate):
+def create_user(user: UserCreate, db: Session = Depends(models.db_session)):
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == user.username)
     try:
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
         raise HTTPException(
             status_code=409, detail=f"The user {user.username} already exists"
         )
@@ -392,8 +418,8 @@ def create_user(user: UserCreate):
         full_name=user.full_name,
         disabled=False,
     )
-    session.add(db_user)
-    session.commit()
+    db.add(db_user)
+    db.commit()
 
     return {
         "username": db_user.username,
@@ -407,11 +433,19 @@ def update_user(
     username: str,
     user: UserCreate,
     token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[Session, Depends(models.db_session)],
 ):
+    current_user = get_current_user(token, db)
+    # TODO: Add support for admin user to modify others
+    if not current_user.username == username:
+        raise HTTPException(
+            status_code=403,
+            detail="You are not authorized to modify this user",
+        )
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == username)
     try:
-        db_user = session.scalars(stmt).one()
+        db_user = db.scalars(stmt).one()
     except NoResultFound:
         raise HTTPException(
             status_code=404, detail=f"The user {username} does not exist"
@@ -419,7 +453,7 @@ def update_user(
     db_user.hashed_password = create_password_hash(user.password)
     db_user.email = user.email
     db_user.full_name = user.full_name
-    session.commit()
+    db.commit()
 
     return {
         "username": db_user.username,
