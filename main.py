@@ -18,6 +18,7 @@ from database import database as models
 
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
+initialize_db = True
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -104,6 +105,7 @@ def get_user_by_token(token: str, db: Session):
 
 
 def get_all_todos(db: Session):
+    models.db_session(initialize=True)
     obj = aliased(models.Task, name="obj")
     stmt = select(obj)
     todos = [
@@ -373,7 +375,7 @@ def get_users(db: Session = Depends(models.db_session)):
         User(
             id=i.id,
             username=i.username,
-            md5_password_hash=i.md5_password_hash,
+            md5_password_hash=i.hashed_password,
         )
         for i in db.scalars(stmt)
     ]
