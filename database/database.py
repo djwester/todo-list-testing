@@ -48,7 +48,7 @@ def maybe_initialize_db(db, engine):
     try:
         obj = aliased(User, name="obj")
         stmt = select(obj)
-        _ = db.scalars(stmt).one()
+        _ = db.scalars(stmt)
     except OperationalError:
         Base.metadata.create_all(engine)
     except NoResultFound:
@@ -73,7 +73,6 @@ def maybe_initialize_db(db, engine):
 
 
 def db_session(initialize=False):
-    print(initialize)
     uri = os.getenv("DATABASE_URL")
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
