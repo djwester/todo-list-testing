@@ -72,15 +72,12 @@ def maybe_initialize_db(db, engine):
         db.commit()
 
 
-def db_session(initialize=False):
+def db_session():
     uri = os.getenv("DATABASE_URL")
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
 
-    if ":memory:" in uri:
-        engine = create_engine(uri, connect_args={"check_same_thread": False})
-    else:
-        engine = create_engine(uri)
+    engine = create_engine(uri)
 
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = Session()
