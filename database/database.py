@@ -80,15 +80,6 @@ def maybe_initialize_db(db, engine):
             )
             db.add(db_user)
             db.commit()
-        # db_user = User(
-        #     username="admin",
-        #     hashed_password=create_password_hash("123456"),
-        #     email="admin@test.com",
-        #     full_name="Admin User",
-        #     disabled=False,
-        # )
-        # db.add(db_user)
-        # db.commit()
     except Exception:
         Base.metadata.create_all(engine)
 
