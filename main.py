@@ -18,7 +18,6 @@ from database import database as models
 
 templates = Jinja2Templates(directory="templates")
 app = FastAPI()
-initialize_db = True
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -31,18 +30,19 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 300
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-class Task(BaseModel):
-    description: str
-    status: models.Status
-    id: Optional[int] = None
-
-
 class User(BaseModel):
     username: str
     hashed_password: str
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
+
+
+class Task(BaseModel):
+    description: str
+    status: models.Status
+    created_by: str | None = "anonymous"
+    id: int | None = None
 
 
 class UserCreate(BaseModel):
@@ -105,11 +105,15 @@ def get_user_by_token(token: str, db: Session):
 
 
 def get_all_todos(db: Session):
-    models.db_session(initialize=True)
     obj = aliased(models.Task, name="obj")
     stmt = select(obj)
     todos = [
-        Task(id=i.id, description=i.description, status=i.status.value)
+        Task(
+            id=i.id,
+            description=i.description,
+            status=i.status.value,
+            created_by=i.created_by,
+        )
         for i in db.scalars(stmt)
     ]
     return todos
@@ -301,7 +305,9 @@ def get_task(
 
 @app.delete("/tasks/{task_id}")
 def delete_task(
-    task_id: int, response: Response, db: Session = Depends(models.db_session)
+    task_id: int,
+    response: Response,
+    db: Session = Depends(models.db_session),
 ):
     try:
         db_task = db.get(models.Task, task_id)
@@ -359,8 +365,7 @@ def get_admin_user(
     stmt = select(obj).where(obj.username == "admin")
     admin_user = db.scalars(stmt).one()
     if current_user.md5_password_hash == admin_user.md5_password_hash:
-        # return {"Success": "You accessed this endpoint!"}
-        return admin_user
+        return {"Success": "You accessed this endpoint!"}
     else:
         raise HTTPException(
             status_code=403, detail="This user cannot access this endpoint"

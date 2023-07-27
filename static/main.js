@@ -1,57 +1,134 @@
 
 const addbutton = document.getElementById("create-task");
+const loginbutton = document.getElementById("login");
+const logoutbutton = document.getElementById("logout")
 const url = "http://127.0.0.1:8000/tasks";
+const base_url = "http://127.0.0.1:8000";
 
-function renderPage(json) {
-        let table_rows = ``;
-        for (var i = 0; i < json.length; i++) {
-            // Create a variable to store HTML
-            var task = json[i]
-            let li = ``;
-            li +=`<tr id="${task.id}">`;
-            li += `<td name="description_${task.id}">${task.description} </td>`;
-            li += `<td>
-                <div class="dropdown">
-                    <button id="statusButton_${task.id}" onclick="getDropdown(${task.id})" class="dropbtn">${task.status}</button>
-                    <div id="statusDropdown_${task.id}" class="dropdown-content">
-                    <a onclick="setDraft(${task.id})" href="#">Draft</a>
-                    <a onclick="setInProgress(${task.id})" href="#">In Progress</a>
-                    <a onclick="setComplete(${task.id})" href="#">Complete</a>
-                    </div>
-                </div>
-            </td>`;
-            li +=`<td>
-                <small>
-                    <button name="edit_${task.id}" id="${task.id}" type="button" class="edit-task" description="${task.description}">Edit</button>
-                    <button name="delete_${task.id}" id="${task.id}" type="button" class="delete-task">Delete</button>
-                </small>
-            </td>`;
-            li += `</tr>`;
-            table_rows += li;
-        }
-
-        // Display result
-        document.getElementById("tasks").innerHTML += table_rows;
-        document.querySelectorAll(".edit-task").forEach(item => {
-            item.addEventListener("click", editTask)
-        })
-        document.querySelectorAll(".delete-task").forEach(item => {
-            item.addEventListener("click", deleteTask)
-        })
+function setCookie(cname, cvalue, exdays) {
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-addbutton.addEventListener("click", () => {
-    const formText = document.getElementById("task-description").value;
-    var data = { "description": formText, "status": "Draft" }
+function getCookie(cname) {
+    let name = cname + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(';');
+    for(let i = 0; i <ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) == ' ') {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
+    }
+    return "";
+}
+
+function delete_cookie( name ) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+function renderPage(json) {
+    let table_rows = ``;
+    for (var i = 0; i < json.length; i++) {
+        // Create a variable to store HTML
+        var task = json[i]
+        let li = ``;
+        li +=`<tr id="${task.id}">`;
+        li += `<td name="description_${task.id}">${task.description} </td>`;
+        li += `<td>
+            <div class="dropdown">
+                <button id="statusButton_${task.id}" onclick="getDropdown(${task.id})" class="dropbtn">${task.status}</button>
+                <div id="statusDropdown_${task.id}" class="dropdown-content">
+                <a onclick="setDraft(${task.id})" href="#">Draft</a>
+                <a onclick="setInProgress(${task.id})" href="#">In Progress</a>
+                <a onclick="setComplete(${task.id})" href="#">Complete</a>
+                </div>
+            </div>
+        </td>`;
+        li +=`<td>
+            <small>
+                <button name="edit_${task.id}" id="${task.id}" type="button" class="edit-task" description="${task.description}">Edit</button>
+                <button name="delete_${task.id}" id="${task.id}" type="button" class="delete-task">Delete</button>
+            </small>
+        </td>`;
+        li += `</tr>`;
+        table_rows += li;
+    }
+
+    // Display result
+    document.getElementById("tasks").innerHTML += table_rows;
+    document.querySelectorAll(".edit-task").forEach(item => {
+        item.addEventListener("click", editTask)
+    })
+    document.querySelectorAll(".delete-task").forEach(item => {
+        item.addEventListener("click", deleteTask)
+    })
+}
+
+logoutbutton.addEventListener("click", () => {
+    delete_cookie("todo_token")
+
+    // hack to "refresh" and thus clear the cookie
     fetch(url, {
-        method: "POST",
+        method: "GET",
         headers: {
             "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data),
+        }
+    })
+})
+addbutton.addEventListener("click", () => {
+    const formText = document.getElementById("task-description").value;
+    const token = getCookie("todo_token")
+    fetch(`${base_url}/user/me`,{
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        }
     })
     .then(response => response.json())
-    .then(json => renderPage([json]));    
+    .then(json => {
+        if (json.username){
+            var user = json.username;
+        } else {
+            var user = "anonymous"
+        }
+        console.log(user)
+        var data = { "description": formText, "status": "Draft", "created_by": user}
+        fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => response.json())
+        .then(json => renderPage([json]));
+    })  
+});
+
+loginbutton.addEventListener("click", () => {
+    const username = document.getElementsByName("uname")[0].value;
+    const password = document.getElementsByName("psw")[0].value;
+    const data = new URLSearchParams({
+        "username": username,
+        "password": password
+    });
+    fetch(`${base_url}/token`, {
+        method: "POST",
+        body: data,
+    })
+    .then(response => response.json())
+    .then(json => {
+        const token = json.access_token;
+        setCookie("todo_token", token, 30);
+        document.getElementById('id01').style.display='none';
+    });
 });
 
 document.addEventListener("DOMContentLoaded", () => {

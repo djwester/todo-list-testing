@@ -1,11 +1,18 @@
 import os
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 
 from passlib.context import CryptContext
-from sqlalchemy import Integer, create_engine, select
+from sqlalchemy import ForeignKey, Integer, UniqueConstraint, create_engine, select
 from sqlalchemy.exc import NoResultFound, OperationalError
-from sqlalchemy.orm import DeclarativeBase, Mapped, aliased, mapped_column, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    aliased,
+    mapped_column,
+    relationship,
+    sessionmaker,
+)
 
 
 class Base(DeclarativeBase):
@@ -18,17 +25,9 @@ class Status(Enum):
     COMPLETE = "Complete"
 
 
-class Task(Base):
-    __tablename__ = "task"
-
-    id = mapped_column(Integer, primary_key=True)
-
-    description: Mapped[str]
-    status: Mapped[Status]
-
-
 class User(Base):
     __tablename__ = "profile"
+    __table_args__ = (UniqueConstraint("username"),)
 
     id = mapped_column(Integer, primary_key=True)
 
@@ -37,6 +36,17 @@ class User(Base):
     email: Mapped[Optional[str]]
     full_name: Mapped[Optional[str]]
     disabled: Mapped[Optional[bool]]
+    tasks: Mapped[List["Task"]] = relationship()
+
+
+class Task(Base):
+    __tablename__ = "task"
+
+    id = mapped_column(Integer, primary_key=True)
+
+    description: Mapped[str]
+    status: Mapped[Status]
+    created_by: Mapped[int] = mapped_column(ForeignKey("profile.username"))
 
 
 def create_password_hash(password: str):
@@ -48,28 +58,39 @@ def maybe_initialize_db(db, engine):
     try:
         obj = aliased(User, name="obj")
         stmt = select(obj)
-        _ = db.scalars(stmt)
+        users = db.scalars(stmt)
+        obj = aliased(Task, name="obj")
+        stmt = select(obj)
+        tasks = db.scalars(stmt)
     except OperationalError:
         Base.metadata.create_all(engine)
     except NoResultFound:
-        db_user = User(
-            username="user1",
-            hashed_password=create_password_hash("12345"),
-            email="user1@test.com",
-            full_name="User One",
-            disabled=False,
-        )
-        db.add(db_user)
-        db.commit()
-        db_user = User(
-            username="admin",
-            hashed_password=create_password_hash("123456"),
-            email="admin@test.com",
-            full_name="Admin User",
-            disabled=False,
-        )
-        db.add(db_user)
-        db.commit()
+        users = [
+            ("user1", "User One"),
+            ("admin", "Admin User"),
+            ("anonymous", "Anonymous User"),
+        ]
+        for user in users:
+            db_user = User(
+                username=user[0],
+                hashed_password=create_password_hash("12345"),
+                email=f"{user[0]}@test.com",
+                full_name=user[1],
+                disabled=False,
+            )
+            db.add(db_user)
+            db.commit()
+        # db_user = User(
+        #     username="admin",
+        #     hashed_password=create_password_hash("123456"),
+        #     email="admin@test.com",
+        #     full_name="Admin User",
+        #     disabled=False,
+        # )
+        # db.add(db_user)
+        # db.commit()
+    except Exception:
+        Base.metadata.create_all(engine)
 
 
 def db_session():

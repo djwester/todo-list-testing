@@ -2,6 +2,35 @@
 
 {% block content %}
 
+ <!-- Button to open the modal login form -->
+ <div class="loginbutton">
+    <button onclick="document.getElementById('id01').style.display='block'">Login</button>
+    <button id ="logout">Logout</button>
+</div>
+<!-- The Modal -->
+<div id="id01" class="modal" postition="absolute">
+  <span onclick="document.getElementById('id01').style.display='none'"
+   class="close" title="Close Modal">&times;</span>
+
+  <!-- Modal Content -->
+  <form class="modal-content animate" onsubmit="return false">
+
+    <div class="container">
+      <label for="uname"><b>Username</b></label>
+      <input type="text" placeholder="Enter Username" name="uname" required>
+
+      <label for="psw"><b>Password</b></label>
+      <input type="password" placeholder="Enter Password" name="psw" required>
+
+      <button id="login" type="submit">Login</button>
+    </div>
+
+    <div class="container" style="background-color:#f1f1f1">
+      <button type="button" onclick="document.getElementById('id01').style.display='none'" class="cancelbtn">Cancel</button>
+    </div>
+  </form>
+</div>
+
 <form>
     <textarea id="task-description" name="task" rows="5" placeholder="Enter your task"></textarea>
     <button id="create-task" type="button">Add</button>
