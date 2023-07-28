@@ -119,12 +119,31 @@ def get_all_todos(db: Session):
     return todos
 
 
+def get_all_todos_for_user(username: str, db: Session):
+    obj = aliased(models.Task, name="obj")
+    stmt = select(obj).where(obj.created_by == username)
+    todos = [
+        Task(
+            id=i.id,
+            description=i.description,
+            status=i.status.value,
+            created_by=i.created_by,
+        )
+        for i in db.scalars(stmt)
+    ]
+    return todos
+
+
 def get_todo_by_status(
     status: models.Status,
+    username: str | None,
     db: Session,
 ) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
-    stmt = select(obj).where(obj.status == status)
+    if username:
+        stmt = select(obj).where(obj.status == status, obj.created_by == username)
+    else:
+        stmt = select(obj).where(obj.status == status)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
         for i in db.scalars(stmt)
@@ -132,9 +151,16 @@ def get_todo_by_status(
     return todos
 
 
-def get_todos_by_description(search: str, db: Session) -> list[models.Task]:
+def get_todos_by_description(
+    search: str,
+    username: str | None,
+    db: Session,
+) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
-    stmt = select(obj).where(obj.description == search)
+    if username:
+        stmt = select(obj).where(obj.description == search, obj.created_by == username)
+    else:
+        stmt = select(obj).where(obj.description == search)
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
         for i in db.scalars(stmt)
@@ -195,12 +221,15 @@ def create_task(task: Task, db: Session = Depends(models.db_session)):
 def get_tasks(
     status: models.Status | None = None,
     search: str | None = None,
+    username: str | None = None,
     db: Session = Depends(models.db_session),
 ):
     if status:
-        todos = get_todo_by_status(status, db)
+        todos = get_todo_by_status(status, username, db)
     elif search:
-        todos = get_todos_by_description(search, db)
+        todos = get_todos_by_description(search, username, db)
+    elif username:
+        todos = get_all_todos_for_user(username, db)
     else:
         todos = get_all_todos(db)
     return todos
@@ -307,15 +336,25 @@ def get_task(
 def delete_task(
     task_id: int,
     response: Response,
+    token: User = Depends(oauth2_scheme),
     db: Session = Depends(models.db_session),
 ):
+    if not token:
+        username = "anonymous"
+    else:
+        user = get_current_user(token, db)
+        username = user.username
+
+    obj = aliased(models.Task, name="obj")
+    stmt = select(obj).where(obj.id == task_id, obj.created_by == username)
     try:
-        db_task = db.get(models.Task, task_id)
-        db.delete(db_task)
-        db.commit()
-    except UnmappedInstanceError:
+        db_task = db.scalars(stmt).one()
+    except NoResultFound:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"error": f"could not delete task {task_id}"}
+
+    db.delete(db_task)
+    db.commit()
 
     return {"deleted": True}
 
@@ -380,7 +419,7 @@ def get_users(db: Session = Depends(models.db_session)):
         User(
             id=i.id,
             username=i.username,
-            md5_password_hash=i.hashed_password,
+            hashed_password=i.hashed_password,
         )
         for i in db.scalars(stmt)
     ]

@@ -67,6 +67,7 @@ def maybe_initialize_db(db, engine):
     except NoResultFound:
         users = [
             ("user1", "User One"),
+            ("user2", "User Two"),
             ("admin", "Admin User"),
             ("anonymous", "Anonymous User"),
         ]

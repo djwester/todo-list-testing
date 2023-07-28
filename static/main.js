@@ -12,7 +12,7 @@ function setCookie(cname, cvalue, exdays) {
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-function getCookie(cname) {
+async function getCookie(cname) {
     let name = cname + "=";
     let decodedCookie = decodeURIComponent(document.cookie);
     let ca = decodedCookie.split(';');
@@ -81,35 +81,57 @@ logoutbutton.addEventListener("click", () => {
         }
     })
 })
+
+async function get_token() {
+    var token = await getCookie("todo_token")
+    if (token == "") {
+        const data = new URLSearchParams({
+            "username": "anonymous",
+            "password": "12345"
+        });
+        const response = await fetch(`${base_url}/token`, {
+            method: "POST",
+            body: data,
+        })
+        const json = await response.json();
+        token = json.access_token;
+        return token
+    } else {
+        return token
+    }
+}
+
 addbutton.addEventListener("click", () => {
     const formText = document.getElementById("task-description").value;
-    const token = getCookie("todo_token")
-    fetch(`${base_url}/user/me`,{
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        }
-    })
-    .then(response => response.json())
-    .then(json => {
-        if (json.username){
-            var user = json.username;
-        } else {
-            var user = "anonymous"
-        }
-        console.log(user)
-        var data = { "description": formText, "status": "Draft", "created_by": user}
-        fetch(url, {
-            method: "POST",
+    token = get_token();
+    token.then(token => {
+        console.log(token)
+        fetch(`${base_url}/user/me`,{
+            method: "GET",
             headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data),
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
         })
         .then(response => response.json())
-        .then(json => renderPage([json]));
-    })  
+        .then(json => {
+            if (json.username){
+                var user = json.username;
+            } else {
+                var user = "anonymous"
+            }
+            var data = { "description": formText, "status": "Draft", "created_by": user}
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(json => renderPage([json]));
+        })
+    })
 });
 
 loginbutton.addEventListener("click", () => {
@@ -145,21 +167,25 @@ document.addEventListener("DOMContentLoaded", () => {
 function deleteTask(event) {
     const taskId = event.currentTarget.id
     const taskUrl = `${url}/${taskId}`
-    fetch(taskUrl, {
-        method: "DELETE",
-        headers: {
-            "Content-Type": "application/json"
-        },
-    })
-    .then(() => {
-        var rows = document.getElementsByTagName("tr");
-        for (const row in rows){
-            if (rows[row].id == taskId) {
-                document.getElementById("tasks").deleteRow(row)
+    token = get_token();
+    token.then(token => {
+        fetch(taskUrl, {
+            method: "DELETE",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+        })
+        .then(() => {
+            var rows = document.getElementsByTagName("tr");
+            for (const row in rows){
+                if (rows[row].id == taskId) {
+                    document.getElementById("tasks").deleteRow(row)
+                }
+                
             }
-            
-        }
-    });
+        });
+    })
 }
 
 function editTask (event) {
