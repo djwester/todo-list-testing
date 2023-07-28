@@ -61,6 +61,26 @@ function renderPage(json) {
     }
 
     // Display result
+    var token = get_token();
+    token.then(token => {
+        fetch(`${base_url}/user/me`,{
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        })
+        .then(response => response.json())
+        .then(json => {
+            if (json.username){
+                var username = json.username;
+            } else {
+                var username = "anonymous"
+            }
+            document.getElementById("username_label").innerHTML = `Username: ${username}`;
+        })
+    });
+    
     document.getElementById("tasks").innerHTML += table_rows;
     document.querySelectorAll(".edit-task").forEach(item => {
         item.addEventListener("click", editTask)
@@ -72,7 +92,7 @@ function renderPage(json) {
 
 logoutbutton.addEventListener("click", () => {
     delete_cookie("todo_token")
-
+    document.getElementById("username_label").innerHTML = "Username: anonymous";
     // hack to "refresh" and thus clear the cookie
     fetch(url, {
         method: "GET",
@@ -150,6 +170,7 @@ loginbutton.addEventListener("click", () => {
         const token = json.access_token;
         setCookie("todo_token", token, 30);
         document.getElementById('id01').style.display='none';
+        document.getElementById("username_label").innerHTML = `Username: ${username}`;
     });
 });
 
