@@ -1,6 +1,6 @@
 import hashlib
 from datetime import datetime, timedelta
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.orm.exc import UnmappedInstanceError
 
 from database import database as models
 
@@ -91,17 +90,6 @@ def get_user_by_token(token: str, db: Session):
     except NoResultFound:
         return
     return db_user
-
-
-# def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-#     user = get_user_by_token(token)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Invalid authentication credentials",
-#             headers={"WWW-Authenticate": "Bearer"},
-#         )
-#     return user
 
 
 def get_all_todos(db: Session):

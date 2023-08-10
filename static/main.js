@@ -125,7 +125,6 @@ addbutton.addEventListener("click", () => {
     const formText = document.getElementById("task-description").value;
     token = get_token();
     token.then(token => {
-        console.log(token)
         fetch(`${base_url}/user/me`,{
             method: "GET",
             headers: {
@@ -197,13 +196,22 @@ function deleteTask(event) {
                 "Authorization": `Bearer ${token}`
             },
         })
-        .then(() => {
-            var rows = document.getElementsByTagName("tr");
-            for (const row in rows){
-                if (rows[row].id == taskId) {
-                    document.getElementById("tasks").deleteRow(row)
+        .then(response => {
+            if (!response.ok) {
+                return ""
+            }
+            response.json()
+        })
+        .then(json => {
+            console.log(json)
+            if (json != ""){
+                var rows = document.getElementsByTagName("tr");
+                for (const row in rows){
+                    if (rows[row].id == taskId) {
+                        document.getElementById("tasks").deleteRow(row)
+                    }
+                    
                 }
-                
             }
         });
     })
@@ -216,6 +224,7 @@ function editTask (event) {
     const taskUrl = `${url}/${taskId}`
     
     let description = window.prompt("Edit the task",taskDescription)
+    // TODO handle canceling on the prompt
     const data = {"description": description, "status": "Draft" }
     fetch(taskUrl, {
         method: "PUT",

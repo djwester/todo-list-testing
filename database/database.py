@@ -97,3 +97,4 @@ def db_session():
     maybe_initialize_db(db, engine)
     with Session() as session:
         yield session
+        session.close()
