@@ -31,7 +31,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class User(BaseModel):
     username: str
-    hashed_password: str
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
@@ -407,7 +406,6 @@ def get_users(db: Session = Depends(models.db_session)):
         User(
             id=i.id,
             username=i.username,
-            hashed_password=i.hashed_password,
         )
         for i in db.scalars(stmt)
     ]
