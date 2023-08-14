@@ -31,7 +31,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class User(BaseModel):
     username: str
-    hashed_password: str
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
@@ -146,9 +145,11 @@ def get_todos_by_description(
 ) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
     if username:
-        stmt = select(obj).where(obj.description == search, obj.created_by == username)
+        stmt = select(obj).where(
+            obj.description.contains(search), obj.created_by == username
+        )
     else:
-        stmt = select(obj).where(obj.description == search)
+        stmt = select(obj).where(obj.description.contains(search))
     todos = [
         Task(id=i.id, description=i.description, status=i.status.value)
         for i in db.scalars(stmt)
@@ -386,12 +387,8 @@ def get_user_me(
 @app.get("/user/admin", response_model=None)
 def get_admin_user(
     current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[Session, Depends(models.db_session)],
 ) -> Any:
-    obj = aliased(models.User, name="obj")
-    stmt = select(obj).where(obj.username == "admin")
-    admin_user = db.scalars(stmt).one()
-    if current_user.md5_password_hash == admin_user.md5_password_hash:
+    if current_user.username == "admin":
         return {"Success": "You accessed this endpoint!"}
     else:
         raise HTTPException(
@@ -407,7 +404,8 @@ def get_users(db: Session = Depends(models.db_session)):
         User(
             id=i.id,
             username=i.username,
-            hashed_password=i.hashed_password,
+            email=i.email,
+            full_name=i.full_name,
         )
         for i in db.scalars(stmt)
     ]
@@ -471,11 +469,12 @@ def update_user(
 ):
     current_user = get_current_user(token, db)
     # TODO: Add support for admin user to modify others
-    if not current_user.username == username:
+    if not current_user.username == username and username != "admin":
         raise HTTPException(
             status_code=403,
             detail="You are not authorized to modify this user",
         )
+
     obj = aliased(models.User, name="obj")
     stmt = select(obj).where(obj.username == username)
     try:
@@ -494,3 +493,30 @@ def update_user(
         "pwd": db_user.hashed_password,
         "email": db_user.email,
     }
+
+
+@app.delete("/user/{user_id}")
+def delete_user(
+    user_id: int,
+    response: Response,
+    token: User = Depends(oauth2_scheme),
+    db: Session = Depends(models.db_session),
+):
+    if not token:
+        username = "anonymous"
+    else:
+        user = get_current_user(token, db)
+        username = user.username
+
+    obj = aliased(models.User, name="obj")
+    stmt = select(obj).where(obj.id == user_id)
+    try:
+        db_user = db.scalars(stmt).one()
+    except NoResultFound:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"error": f"could not delete user {user_id}"}
+
+    db.delete(db_user)
+    db.commit()
+
+    return {"deleted": True}
