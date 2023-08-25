@@ -2,8 +2,9 @@
 const addbutton = document.getElementById("create-task");
 const loginbutton = document.getElementById("login");
 const logoutbutton = document.getElementById("logout")
+const protocol = window.location.protocol;
 const host = window.location.host;
-const base_url = `http://${host}`;
+const base_url = `${protocol}//${host}`;
 const url = `${base_url}/tasks`;
 
 function setCookie(cname, cvalue, exdays) {
