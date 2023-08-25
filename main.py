@@ -199,11 +199,12 @@ def create_task(task: Task, db: Session = Depends(models.db_session)):
         db.rollback()
         raise HTTPException(status_code=400, detail="Task already exists")
 
-    return {
-        "id": db_task.id,
-        "description": db_task.description,
-        "status": db_task.status,
-    }
+    return Task(
+        id=db_task.id,
+        description=db_task.description,
+        status=db_task.status,
+        created_by=db_task.created_by,
+    )
 
 
 @app.get("/tasks", status_code=200)
