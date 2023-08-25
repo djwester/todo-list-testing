@@ -128,7 +128,10 @@ def get_todo_by_status(
 ) -> list[models.Task]:
     obj = aliased(models.Task, name="obj")
     if username:
-        stmt = select(obj).where(obj.status == status, obj.created_by == username)
+        stmt = select(obj).where(
+            obj.status == status,
+            obj.created_by == username,
+        )
     else:
         stmt = select(obj).where(obj.status == status)
     todos = [
