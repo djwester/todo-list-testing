@@ -1,0 +1,11 @@
+tasks:
+  - init: make
+  - name: Create .envrc file
+    command: |
+        if [ -f .envrc ]; then
+          echo "Found .envrc in workspace"
+        else
+          echo "Creating .envrc from example file"
+          cp .envrc.example .envrc
+          direnv allow
+        fi
