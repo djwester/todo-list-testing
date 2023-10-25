@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -18,6 +19,7 @@ from database import database as models
 
 logging.basicConfig(level=logging.INFO)
 templates = Jinja2Templates(directory="templates")
+favicon_path = "images/favicon.ico"
 app = FastAPI()
 log = logging.getLogger("app")
 
@@ -161,6 +163,11 @@ def get_todos_by_description(
         for i in db.scalars(stmt)
     ]
     return todos
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(favicon_path)
 
 
 @app.post("/token")
