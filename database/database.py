@@ -58,10 +58,10 @@ def maybe_initialize_db(db, engine):
     try:
         obj = aliased(User, name="obj")
         stmt = select(obj)
-        users = db.scalars(stmt)
-        obj = aliased(Task, name="obj")
-        stmt = select(obj)
-        tasks = db.scalars(stmt)
+        users = db.execute(stmt).one().obj
+        # obj = aliased(Task, name="obj")
+        # stmt = select(obj)
+        # tasks = db.execute(stmt).one().obj
     except OperationalError:
         Base.metadata.create_all(engine)
     except NoResultFound:
@@ -89,7 +89,6 @@ def db_session():
     uri = os.getenv("DATABASE_URL")
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
-
     engine = create_engine(uri)
 
     Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
