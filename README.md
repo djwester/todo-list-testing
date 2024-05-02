@@ -54,7 +54,16 @@ Once you have it installed, you can use it to install all the other package depe
 poetry install
 ```
 
-Once everything is installed, you can create the 
+Once everything is installed, you can create the environment file by calling:
+
+```bash
+cp .envrc.example .envrc
+```
+
+You will need `direnv` to set your environment. If you don't yet have it installed, follow the instructions [here](https://direnv.net/docs/installation.html) to install it.
+
+Call `direnv allow` to set the environment variables, and should now be ready to run the application.
+
 ## Running the app locally
 In order to run this app locally call this command:
 
