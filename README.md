@@ -39,7 +39,8 @@ brew install python@3.11
 ```
 
 ### Windows
-To install the latest version of python on Windows, go to the [Windows downloads](https://www.python.org/downloads/windows/) page on python.org. Download the latest release and run the installer.
+* To install the latest version of python on Windows, go to the [Windows downloads](https://www.python.org/downloads/windows/) page on python.org. Download the latest release and run the installer.
+* You will also need to install [just](https://github.com/casey/just) in order to build this locally. You can install it with winget by tying this command into a command prompt `winget install --id Casey.Just --exact` (don't forget to restart your terminal after installing this)
 
 ## Setup
 With python installed, you are ready to setup this application. It uses [poetry](https://python-poetry.org/docs/) to for dependency management. You can install poetry with the following command:
@@ -75,6 +76,11 @@ Alternatively, you can run it with the make command:
 
 ```bash
 make run-dev
+```
+
+or if you have installed just (running in a powershell instance on windows)
+```shell
+just --shell powershell.exe --shell-arg -c run-dev
 ```
 
 You can then access the application at http://127.0.0.1:8000
