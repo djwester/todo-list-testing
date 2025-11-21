@@ -86,7 +86,7 @@ def maybe_initialize_db(db, engine):
 
 
 def db_session():
-    uri = os.getenv("DATABASE_URL")
+    uri = os.getenv("DATABASE_URL","sqlite+pysqlite:///./sql_db.db")
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
     engine = create_engine(uri)
