@@ -1,12 +1,7 @@
 {
     "name": "Python Poetry Development",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
-    "features": {
-        "ghcr.io/devcontainers-extra/features/poetry:1": {
-            "version": "latest"
-        }
-    },
-    "postCreateCommand": "poetry install",
+    "postCreateCommand": "pip install poetry && poetry install",
     "customizations": {
         "vscode": {
             "extensions": [
