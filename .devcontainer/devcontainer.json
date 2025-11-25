@@ -1,7 +1,7 @@
 {
     "name": "Python Poetry Development",
     "image": "mcr.microsoft.com/devcontainers/python:3.11",
-    "postCreateCommand": "pip install poetry && poetry install",
+    "postCreateCommand": "pip install poetry && poetry install --no-root",
     "customizations": {
         "vscode": {
             "extensions": [
