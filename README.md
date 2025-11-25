@@ -3,22 +3,23 @@ This application is a simple application to use for learning about testing APIs.
 
 # Install and Setup
 
-## Using Gitpod
-The easiest way to run this is in gitpod. This should have all the dependencies setup for your automatically. You can do that with the following steps:
+## Using Codespaces
+The easiest way to run this is in with Github codespaces. This should have all the dependencies setup for you automatically. You can do that with the following steps:
 
 1.	First of all, you will need a GitHub account. If you don’t yet have one you can sign up at https://github.com.
-2.	Once you have that account, navigate to https://gitpod.io/#https://github.com/djwester/todo-list-testing in your browser
-3.	Click to Continue with GitHub.
+2.	Once you have that account, navigate to the github repo: https://github.com/djwester/todo-list-testing in your browser
+3.	Click on the Code dropdown and on the Codespaces tab click to create a new codespace
+![alt text](codespaces.png)
 4.	You can accept the default workspace settings and continue.
 5.	Once it has finished loading, go to the terminal and type in the command `make run-dev` and hit enter.
 6.	The service should start and you should see a toast message with a few options. Click on the **Make Public** option.
 7.	Click on the Ports tab and you can see the public URL of the test site available to copy.
 
->Note that GitPod will shut this site down after a few minutes of inactivity, so if you haven’t been using it for a while and you get an error when making API calls, you may have to come back and repeat these steps to restart the site. Also every time you restart the site it will have a slightly different URL so don’t forget to update the URL of any API calls pointing at this site. 
+>Note that Github will shut this site down after a few minutes of inactivity, so if you haven’t been using it for a while and you get an error when making API calls, you may have to come back and repeat these steps to restart the site. Also every time you restart the site it will have a slightly different URL so don’t forget to update the URL of any API calls pointing at this site.
 
 
 ## Running Locally
-You will need python 3.11 to run this application. You can check what version of python you have by going to the command shell (search for "terminal" in your applications) and calling 
+You will need python 3.11 to run this application. You can check what version of python you have by going to the command shell (search for "terminal" in your applications) and calling
 ```bash
 python -V
 ```
